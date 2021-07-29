@@ -29,7 +29,7 @@ import pandas
 #from timeplot.util import TimePlotUtils
 
 from .decaycalculator import DecayCalculator
-from .utils import PulseUtils
+from .utils import PulseAppUtils
 
 from subprocess import Popen, PIPE, STDOUT
 
@@ -60,6 +60,7 @@ class PulseApp(rumps.App):
         'datacopy_prefix':          'Schedule.calc.',
         'datacopy_postfix':         '.vimgpg',
         'default_gpgkey':           "pantheon.redgrey@gpg.key",
+        'gpgkey':                   "pantheon.redgrey@gpg.key",
         'datacopy_remove_duplicates': True,
     }
 
@@ -76,11 +77,10 @@ class PulseApp(rumps.App):
     }
 
     def __init__(self):
-
         log.debug("__init__")
         super().__init__(self.data['init_string'], quit_button=None)
 
-        self.data['gpgkey'] = self.data['default_gpgkey']
+        #self.data['gpgkey'] = self.data['default_gpgkey']
 
         #   Setup menu items
         self.menu_item_qtytoday = rumps.MenuItem("qty:")
@@ -106,6 +106,7 @@ class PulseApp(rumps.App):
             self.poll_qty['now'][loop_label] = 0
             self.poll_qty['today'][loop_label] = 0
 
+        log.debug("self.data:\n%s\n" % pprint.pformat(self.data))
         self.timer_qtys = rumps.Timer(self.func_poll_qtys, self.data['dt_poll_qtys'])
         self.timer_qtys.start()
 
@@ -117,20 +118,20 @@ class PulseApp(rumps.App):
         #   Copy any new data from path_dir_datasource to path_dir_datacopy
         try:
             path_source = os.path.join(self.data['path_dir_datasource'], self.data['datasource_filename'])
-            PulseUtils.CopyLogDataFile_DivideByMonth(path_source, self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, overwrite=True, includeMonthBefore=True, gpgkey=self.data['gpgkey'], remove_duplicates=self.data['datacopy_remove_duplicates'])
+            PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, overwrite=True, includeMonthBefore=True, gpgkey=self.data['gpgkey'], remove_duplicates=self.data['datacopy_remove_duplicates'])
         except Exception as e:
             log.error("CopyLogDataFile, e=(%s)" % str(e))
 
         #   Get list of files to read data from
         try:
-            located_filepaths = PulseUtils.GetAvailableFiles_FromMonthlyRange(self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, includeMonthBefore=True)
+            located_filepaths = PulseAppUtils.GetAvailableFiles_FromMonthlyRange(self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, includeMonthBefore=True)
         except Exception as e:
             log.error("GetAvailableFiles, e=(%s)" % str(e))
 
         for loop_label, loop_halflife, loop_onset in zip(self.poll_items['labels'], self.poll_items['halflives'], self.poll_items['onsets']):
             #   Read data from copied file(s) for loop_label
             try:
-                data_dt, data_qty = PulseUtils.ReadQtyScheduleData(located_filepaths, loop_label)
+                data_dt, data_qty = PulseAppUtils.ReadQtyScheduleData(located_filepaths, loop_label)
             except Exception as e:
                 log.error("ReadQtyScheduleData, e=(%s)" % str(e))
 
@@ -152,7 +153,7 @@ class PulseApp(rumps.App):
                 loop_qty_now = 0
 
             log.debug("loop_qty_today=(%s)" % str(loop_qty_today))
-            log.debug("loop_qty_now=(%s)" % str(loop_qty_now))
+            log.debug("loop_qty_now=(%s)\n" % str(loop_qty_now))
  
 
         log.debug("Quit")
