@@ -9,8 +9,6 @@ logging.basicConfig(stream=sys.stderr)
 log = logging.getLogger('pulse')
 log.setLevel(level=logging.DEBUG)
 
-__version__ = "0.3.0"
-
 if __name__ == '__main__':
     log.debug("__main__")
     app = PulseApp()

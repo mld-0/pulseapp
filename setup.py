@@ -7,11 +7,7 @@ import pkg_resources
 import re
 import pulseapp
 
-version = re.search(
-    '^__version__\s*=\s*"(.*)"',
-    open('pulseapp/__main__.py').read(),
-    re.M
-    ).group(1)
+exec(open('pulseapp/version.py').read())
 
 APP = [ 'main.py' ]
 packages = [ 'rumps', 'pulseapp', 'pandas', 'dateparser' ]
@@ -21,7 +17,7 @@ OPTIONS = {
     'argv_emulation': True,
     'iconfile': 'icon-pulse.icns',
     'plist': {
-        'CFBundleShortVersionString': version,
+        'CFBundleShortVersionString': __version__,
         'LSUIElement': True,
     },
     'packages': packages,
@@ -34,6 +30,7 @@ setup(
     data_files=DATA_FILES,
     options={'py2app': OPTIONS},
     setup_requires=packages,
-    install_requires=packages
+    install_requires=packages,
+    version=__version__,
 )
 
