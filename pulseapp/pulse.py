@@ -44,7 +44,7 @@ log.setLevel(logging.DEBUG)
 class PulseApp(rumps.App):
 
     data = { 
-        'dt_poll_qtys':             10,
+        'delta_poll_qtys':          20,
         'poll_qty_precision':       2,
         'poll_qty_threshold':       0.01,
         'init_string':              "Hello There",
@@ -62,9 +62,10 @@ class PulseApp(rumps.App):
         'default_gpgkey':           "pantheon.redgrey@gpg.key",
         'gpgkey':                   "pantheon.redgrey@gpg.key",
         'datacopy_remove_duplicates': True,
+        'data_cols':                { 'label': 0, 'qty': 1, 'datetime': 3, },
     }
 
-    data_cols = dict()
+    #data_cols = dict()
     poll_items = { 
         'labels': [],
         'halflives': [],
@@ -74,6 +75,7 @@ class PulseApp(rumps.App):
         'today': dict(),
         'now': dict(),
         'previous': dict(),
+        'deltanow': dict(),
     }
 
     def __init__(self):
@@ -84,18 +86,23 @@ class PulseApp(rumps.App):
 
         #   Setup menu items
         self.menu_item_qtytoday = rumps.MenuItem("qty:")
+        self.menu_item_plottoday = rumps.MenuItem("Plot Today")
+        self.menu_item_plotall = rumps.MenuItem("Plot All")
         self.menu_item_quit = rumps.MenuItem("Quit")
+
         self.menu.add(self.menu_item_qtytoday)
+        self.menu.add(self.menu_item_plottoday)
+        self.menu.add(self.menu_item_plotall)
         self.menu.add(self.menu_item_quit)
 
         #   Create path_dir_datacopy
         if not os.path.isdir(self.data['path_dir_datacopy']):
-            log.warning("makedirs _datacopy_dir=(%s)" % str(self.data['path_dir_datacopy']))
+            log.warning("makedirs path_dir_datacopy=(%s)" % str(self.data['path_dir_datacopy']))
             os.makedirs(self.data['path_dir_datacopy'])
 
         #   Read resource files
         try:
-            self._ReadResource_DataCols()
+            #self._ReadResource_DataCols()
             self._ReadResource_DataLabels()
         except Exception as e:
             log.error("Failed ReadResource, e=(%s)" % str(e))
@@ -107,7 +114,7 @@ class PulseApp(rumps.App):
             self.poll_qty['today'][loop_label] = 0
 
         log.debug("self.data:\n%s\n" % pprint.pformat(self.data))
-        self.timer_qtys = rumps.Timer(self.func_poll_qtys, self.data['dt_poll_qtys'])
+        self.timer_qtys = rumps.Timer(self.func_poll_qtys, self.data['delta_poll_qtys'])
         self.timer_qtys.start()
 
 
@@ -118,46 +125,88 @@ class PulseApp(rumps.App):
         #   Copy any new data from path_dir_datasource to path_dir_datacopy
         try:
             path_source = os.path.join(self.data['path_dir_datasource'], self.data['datasource_filename'])
-            PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, overwrite=True, includeMonthBefore=True, gpgkey=self.data['gpgkey'], remove_duplicates=self.data['datacopy_remove_duplicates'])
+            PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_overwrite=True, arg_includeMonthBefore=True, arg_gpg_key=self.data['gpgkey'], arg_remove_duplicate_lines=self.data['datacopy_remove_duplicates'])
         except Exception as e:
             log.error("CopyLogDataFile, e=(%s)" % str(e))
 
         #   Get list of files to read data from
         try:
-            located_filepaths = PulseAppUtils.GetAvailableFiles_FromMonthlyRange(self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, includeMonthBefore=True)
+            located_filepaths = PulseAppUtils.GetFiles_FromMonthlyRange(self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_includeMonthBefore=True)
         except Exception as e:
             log.error("GetAvailableFiles, e=(%s)" % str(e))
 
+
         for loop_label, loop_halflife, loop_onset in zip(self.poll_items['labels'], self.poll_items['halflives'], self.poll_items['onsets']):
+            log.debug("loop_label=(%s)" % str(loop_label))
             #   Read data from copied file(s) for loop_label
             try:
-                data_dt, data_qty = PulseAppUtils.ReadQtyScheduleData(located_filepaths, loop_label)
+                schedule_datetimes, schedule_qtys = PulseAppUtils.ReadTimestampedQtyScheduleData(located_filepaths, loop_label, self.data['data_cols'], self.data['data_delim'])
             except Exception as e:
                 log.error("ReadQtyScheduleData, e=(%s)" % str(e))
-
             #   Calculate current qty for loop_label
+            loop_qty_today = None
             try:
-                loop_qty_today = DecayCalculator.TotalQtyForDay(now, data_dt, data_qty)
+                loop_qty_today = DecayCalculator.TotalQtyForDay(now, schedule_datetimes, schedule_qtys)
             except Exception as e:
                 log.error("TotalQtyForDay, e=(%s)" % str(e))
-
             #   Calculate daily qty for loop_label
+            loop_qty_now = None
             try:
-                loop_qty_now = DecayCalculator.CalculateQtyAtDT(now, data_dt, data_qty, loop_halflife, loop_onset)
+                loop_qty_now = DecayCalculator.CalculateQtyAtDT(now, schedule_datetimes, schedule_qtys, loop_halflife, loop_onset)
             except Exception as e:
                 log.error("CalculateQtyAtDT, e=(%s)" % str(e))
-
             #   Round result to poll_qty_precision, and down to zero if less than poll_qty_threshold
             loop_qty_now = round(loop_qty_now, self.data['poll_qty_precision'])
             if (loop_qty_now < self.data['poll_qty_threshold']):
                 loop_qty_now = 0
-
+            schedule_datetimes_last = max(schedule_datetimes)
+            loop_deltanow = (now - schedule_datetimes_last).total_seconds()
+            self.poll_qty['previous'][loop_label] = self.poll_qty['now'][loop_label]
+            self.poll_qty['now'][loop_label] = loop_qty_now
+            self.poll_qty['today'][loop_label] = loop_qty_today
+            self.poll_qty['deltanow'][loop_label] = loop_deltanow
             log.debug("loop_qty_today=(%s)" % str(loop_qty_today))
-            log.debug("loop_qty_now=(%s)\n" % str(loop_qty_now))
- 
+            log.debug("loop_qty_now=(%s)" % str(loop_qty_now))
+            log.debug("loop_deltanow=(%s)" % str(loop_deltanow))
 
-        log.debug("Quit")
-        rumps.quit_application()
+        poll_title_str = self._CreatePollTitleStr()
+        poll_todaysum_str = self._CreatePollTodaySumStr()
+
+        sys.stderr.write("\n")
+
+        self.title = poll_title_str
+        self.menu_item_qtytoday.title = poll_todaysum_str
+
+        #log.debug("Quit")
+        #rumps.quit_application()
+
+    def _CreatePollTitleStr(self):
+        poll_str_qty = ""
+        poll_str_delta = ""
+        for loop_label in self.poll_items['labels']:
+            loop_qty_now_previous = self.poll_qty['previous'][loop_label]
+            loop_qty_now = self.poll_qty['now'][loop_label]
+            loop_delta_now = self.poll_qty['deltanow'][loop_label]
+            if loop_qty_now >= self.data['poll_qty_threshold']:
+                poll_str_qty += str(loop_label[0]) + str(loop_qty_now)
+                if (loop_qty_now > loop_qty_now_previous):
+                    poll_str_qty += "🔺"
+                else:
+                    poll_str_qty += " "
+                poll_str_delta += str(int(loop_delta_now/60)) + " "
+        poll_title_str = poll_str_delta.strip() + "⏳" + poll_str_qty.strip()
+        log.debug("poll_title_str=(%s)" % str(poll_title_str))
+        return poll_title_str
+
+    def _CreatePollTodaySumStr(self):
+        poll_todaysum_str = "qty: "
+        for loop_label in self.poll_items['labels']:
+            loop_qty_today = self.poll_qty['today'][loop_label]
+            poll_todaysum_str += loop_label[0] + "" + str(loop_qty_today) + " "
+
+        poll_todaysum_str = poll_todaysum_str.strip()
+        log.debug("poll_todaysum_str=(%s)" % str(poll_todaysum_str))
+        return poll_todaysum_str
 
     @rumps.clicked('Quit')
     def handle_quit(self, _):
@@ -167,19 +216,19 @@ class PulseApp(rumps.App):
         rumps.quit_application()
         #   }}}
 
-    def _ReadResource_DataCols(self):
-        """Read resource file config_cols_file to 'self.data_cols' as tab-delimited integers. Values (in order): [ label, qty, datetime ]"""
-        #   {{{
-        file_data_cols = importlib.resources.open_text(*self.data['config_cols_file'])
-        log.debug("file_data_cols=(%s)" % str(file_data_cols))
-        filedata = file_data_cols.read().strip()
-        _data_cols_str = filedata.split("\t")
-        self.data_cols['label'] = int(_data_cols_str[0])
-        self.data_cols['qty'] = int(_data_cols_str[1])
-        self.data_cols['datetime'] = int(_data_cols_str[2])
-        file_data_cols.close()
-        log.debug("data_cols=(%s)" % str(self.data_cols))
-        #   }}}
+    #def _ReadResource_DataCols(self):
+    #    """Read resource file config_cols_file to 'self.data_cols' as tab-delimited integers. Values (in order): [ label, qty, datetime ]"""
+    #    #   {{{
+    #    file_data_cols = importlib.resources.open_text(*self.data['config_cols_file'])
+    #    log.debug("file_data_cols=(%s)" % str(file_data_cols))
+    #    filedata = file_data_cols.read().strip()
+    #    _data_cols_str = filedata.split("\t")
+    #    self.data_cols['label'] = int(_data_cols_str[0])
+    #    self.data_cols['qty'] = int(_data_cols_str[1])
+    #    self.data_cols['datetime'] = int(_data_cols_str[2])
+    #    file_data_cols.close()
+    #    log.debug("data_cols=(%s)" % str(self.data_cols))
+    #    #   }}}
 
     def _ReadResource_DataLabels(self):
         """Read resource file config_labels_file to 'self.poll_items as tab-delimited values"""

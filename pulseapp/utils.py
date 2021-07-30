@@ -82,7 +82,6 @@ class PulseAppUtils(object):
         return None
         #   }}}
 
-
     @staticmethod
     def MonthlyDateRange_FromFirstAndLast(arg_dt_first, arg_dt_last, arg_includeMonthBefore=False, arg_result_str=True):
         """Get list of months between two dates, as either strings or datetimes. Optionally include month before first date."""
@@ -175,10 +174,6 @@ class PulseAppUtils(object):
         _elapsed = _timedone - _starttime
         log.debug("_elapsed=(%s)" % str(_elapsed))
     #   }}}
-
-    #@staticmethod
-    #def GetAvailableFiles_FromMonthlyRange(path_dir, prefix, postfix, month_start, month_end, includeMonthBefore):
-    #    log.debug("path_dir=(%s)\n\tprefix=(%s)\n\tpostfix=(%s)\n\tmonth_start=(%s)\n\tmonth_end=(%s)\n\tincludeMonthBefore=(%s)" % (path_dir, prefix, postfix, month_start, month_end, includeMonthBefore))
 
     @staticmethod
     def GetFiles_FromMonthlyRange(arg_data_dir, arg_file_prefix, arg_file_postfix, arg_dt_first, arg_dt_last, arg_includeMonthBefore=False):
