@@ -10,6 +10,7 @@ import importlib.resources
 import tempfile
 import datetime
 import time
+import pprint
 from pulseapp.pulse import PulseApp
 from pulseapp.utils import PulseAppUtils
 
@@ -28,34 +29,49 @@ with importlib.resources.path("pulseapp.tests.data", "encrypted-example.gpg") as
 
 path_test_schedule = os.path.join(os.environ.get('mld_icloud_workflowDocuments'), 'Schedule.iphone.log')
 
+#_testdir = tempfile.TemporaryDirectory()
+#path_testdir = os.path.realpath(_testdir.name)
+path_testdir = "/tmp/pulseutils.test.temp"
+if not os.path.isdir(path_testdir):
+    os.mkdir(path_testdir)
+
 class Test_PulseAppUtils(unittest.TestCase):
 
     data = PulseApp.data
 
+    def test_ReadTimestampedQtyScheduleData(self):
+        self.assertEqual(os.path.isfile(path_test_schedule), True)
+        now = datetime.datetime.now()
+        path_source = os.path.join(self.data['path_dir_datasource'], self.data['datasource_filename'])
+        PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, path_testdir, self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_overwrite=True, arg_includeMonthBefore=True, arg_gpg_key=self.data['gpgkey'], arg_remove_duplicate_lines=self.data['datacopy_remove_duplicates'])
+        result_files = PulseAppUtils.GetFiles_FromMonthlyRange(path_testdir, self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, True)
+        result_datetimes, result_qtys = PulseAppUtils.ReadTimestampedQtyScheduleData(result_files, "D-IR", self.data['data_cols'], self.data['data_delim'])
+        result_datetimes, result_qtys = PulseAppUtils.ReadTimestampedQtyScheduleData(result_files, "Can-S", self.data['data_cols'], self.data['data_delim'])
+        #   Continue: 2021-07-30T14:18:52AEST verify results of ReadTimestampedQtyScheduleData() -> use of dedicated test file <- predictable results which can be used with assert?
+
+
     def test_CopyLogDataFile_DivideByMonth(self):
         self.assertEqual(os.path.isfile(path_test_schedule), True)
-
-        _testdir = tempfile.TemporaryDirectory()
-        path_testdir = os.path.realpath(_testdir.name)
-
         now = datetime.datetime.now()
-
         #   Copy any new data from path_dir_datasource to path_dir_datacopy
         path_source = os.path.join(self.data['path_dir_datasource'], self.data['datasource_filename'])
-        print(path_source)
-        try:
-            PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, path_testdir, self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_overwrite=True, arg_includeMonthBefore=True, arg_gpg_key=self.data['gpgkey'], arg_remove_duplicate_lines=self.data['datacopy_remove_duplicates'])
-        except Exception as e:
-            log.error("CopyLogDataFile, e=(%s)" % str(e))
-
+        PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, path_testdir, self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_overwrite=True, arg_includeMonthBefore=True, arg_gpg_key=self.data['gpgkey'], arg_remove_duplicate_lines=self.data['datacopy_remove_duplicates'])
+        #   Ongoing: 2021-07-30T11:49:02AEST Get sha256 of resulting file(s), call CopyLogDataFile_DivideByMonth() again, and verify files aren't changed given no new data
+        #   Ongoing: 2021-07-30T11:49:46AEST Use a file that isn't (the real icloud schedule document) for testing
         #   Continue: 2021-07-29T23:31:58AEST pulseapp, test_pulseutils, verify contents of path_testdir
         #   Continue: 2021-07-29T23:32:14AEST pulseapp, test_pulseutils, CopyLogDataFile_DivideByMonth, do not update file if sha256 of contents match
 
-        _testdir.cleanup()
-
 
     def test_GetAvailableFiles_FromMonthlyRange(self):
-        pass
+        self.assertEqual(os.path.isfile(path_test_schedule), True)
+        now = datetime.datetime.now()
+        #   Copy any new data from path_dir_datasource to path_dir_datacopy
+        path_source = os.path.join(self.data['path_dir_datasource'], self.data['datasource_filename'])
+        PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, path_testdir, self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_overwrite=True, arg_includeMonthBefore=True, arg_gpg_key=self.data['gpgkey'], arg_remove_duplicate_lines=self.data['datacopy_remove_duplicates'])
+        result_files = PulseAppUtils.GetFiles_FromMonthlyRange(path_testdir, self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, True)
+        self.assertEqual(len(result_files), 2, "Should be two files, current month and previous month")
+        for loop_file in result_files:
+            self.assertEqual(os.path.isfile(loop_file), True)
 
 
     def test_gpg_decryptfile2string(self):
@@ -66,25 +82,21 @@ class Test_PulseAppUtils(unittest.TestCase):
         text_start = "def\nhij\n"
         result_encrypted = PulseAppUtils.GPG_EncryptString2ByteArray(text_start, gpg_key_test)
         self.assertNotEqual(text_start.encode(), result_encrypted)
-        _testdir = tempfile.TemporaryDirectory()
-        path_testfile = os.path.join(os.path.realpath(_testdir.name), "test.temp.gpg")
+        path_testfile = os.path.join(path_testdir, "test.encryptstring2bytearray.temp.gpg")
         with open(path_testfile, 'wb') as f:
             f.write(result_encrypted)
         result_decrypted = PulseAppUtils.GPG_DecryptFile2String(path_testfile)
         self.assertEqual(text_start, result_decrypted)
-        _testdir.cleanup()
 
     def test_gpg_encryptstring2bytearray_armor(self):
         text_start = "def\nhij\n"
         result_encrypted = PulseAppUtils.GPG_EncryptString2ByteArray(text_start, gpg_key_test, True)
         self.assertNotEqual(text_start.encode(), result_encrypted)
-        _testdir = tempfile.TemporaryDirectory()
-        path_testfile = os.path.join(os.path.realpath(_testdir.name), "test.temp.gpg")
+        path_testfile = os.path.join(path_testdir, "test.encryptstring2bytearray.armor.temp.gpg")
         with open(path_testfile, 'wb') as f:
             f.write(result_encrypted)
         result_decrypted = PulseAppUtils.GPG_DecryptFile2String(path_testfile)
         self.assertEqual(text_start, result_decrypted)
-        _testdir.cleanup()
 
 
 if __name__ == "__main__":
