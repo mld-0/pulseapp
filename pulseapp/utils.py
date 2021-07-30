@@ -25,6 +25,18 @@ log.setLevel(logging.DEBUG)
 class PulseAppUtils(object):
 
     @staticmethod
+    def _DayStartAndEndTimes_FromDate(arg_day):
+        """For a given date, return as python datetime [ first, last ] second of that day"""
+    #   {{{
+        if not isinstance(arg_day, datetime.datetime):
+            arg_day = dateparser.parse(arg_day)
+        result_start = arg_day.replace(hour=0, minute=0, second=0, microsecond=0)
+        result_end = arg_day.replace(hour=23, minute=59, second=59, microsecond=0)
+        return [ result_start, result_end ]
+    #   }}}
+
+    #   Ongoing: 2021-07-30T14:48:13AEST pulseapp, optimisation, decryption is the slowest part, store contents of decrypted files and use that text for each call to ReadTimestampedQtyScheduleData() provided the file hasn't changed
+    @staticmethod
     def ReadTimestampedQtyScheduleData(filepaths, label, data_cols, data_delim):
         """Read qtys (Decimals) and timestamps (datetimes) corresponding to given label (or all entries if None) for each file in filepaths, and return (timestamps, qtys)"""
         #   {{{
