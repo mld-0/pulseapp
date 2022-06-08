@@ -49,7 +49,6 @@ class PulseApp(rumps.App):
         'poll_qty_threshold':       0.01,
         'init_string':              "Hello There",
         'config_labels_file':       [ 'config', 'poll_items.txt' ],
-        'config_cols_file':         [ 'config', 'poll_columns.txt' ],
         'data_delim':               ",",
         'path_dir_sysout_cloud':    os.environ.get('mld_out_cloud_shared'),
         'path_dir_output_plot':     os.environ.get('mld_plots_pulse'),
@@ -65,7 +64,6 @@ class PulseApp(rumps.App):
         'data_cols':                { 'label': 0, 'qty': 1, 'datetime': 3, },
     }
 
-    #data_cols = dict()
     poll_items = { 
         'labels': [],
         'halflives': [],
@@ -102,7 +100,6 @@ class PulseApp(rumps.App):
 
         #   Read resource files
         try:
-            #self._ReadResource_DataCols()
             self._ReadResource_DataLabels()
         except Exception as e:
             log.error("Failed ReadResource, e=(%s)" % str(e))
@@ -215,20 +212,6 @@ class PulseApp(rumps.App):
         log.debug("Quit called")
         rumps.quit_application()
         #   }}}
-
-    #def _ReadResource_DataCols(self):
-    #    """Read resource file config_cols_file to 'self.data_cols' as tab-delimited integers. Values (in order): [ label, qty, datetime ]"""
-    #    #   {{{
-    #    file_data_cols = importlib.resources.open_text(*self.data['config_cols_file'])
-    #    log.debug("file_data_cols=(%s)" % str(file_data_cols))
-    #    filedata = file_data_cols.read().strip()
-    #    _data_cols_str = filedata.split("\t")
-    #    self.data_cols['label'] = int(_data_cols_str[0])
-    #    self.data_cols['qty'] = int(_data_cols_str[1])
-    #    self.data_cols['datetime'] = int(_data_cols_str[2])
-    #    file_data_cols.close()
-    #    log.debug("data_cols=(%s)" % str(self.data_cols))
-    #    #   }}}
 
     def _ReadResource_DataLabels(self):
         """Read resource file config_labels_file to 'self.poll_items as tab-delimited values"""

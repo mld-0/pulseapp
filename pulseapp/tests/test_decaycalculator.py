@@ -11,6 +11,7 @@ import tempfile
 import datetime
 import time
 import pprint
+
 from pulseapp.pulse import PulseApp
 from pulseapp.utils import PulseAppUtils
 from pulseapp.decaycalculator import DecayCalculator
@@ -23,9 +24,12 @@ log = logging.getLogger('pulse')
 log.setLevel(logging.DEBUG)
 
 with importlib.resources.path("pulseapp.tests.data", "encrypted-example.gpg") as p:
+#with importlib.resources.path("tests.data", "encrypted-example.gpg") as p:
     path_test_encrypted_example_gpg = str(p)
 
 path_test_schedule = os.path.join(os.environ.get('mld_icloud_workflowDocuments'), 'Schedule.iphone.log')
+if not os.path.isfile(path_test_schedule):
+    raise FileNotFoundError("path_test_schedule=(%s)" % path_test_schedule)
 
 #_testdir = tempfile.TemporaryDirectory()
 #path_testdir = os.path.realpath(_testdir.name)

@@ -1,1 +1,1 @@
-from .version import __version__
+from pulseapp.pulseapp.version import __version__
