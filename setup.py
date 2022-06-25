@@ -12,7 +12,8 @@ print("got version=(%s)" % __version__)
 
 APP = [ 'main.py' ]
 dependencies = [ 'rumps', 'pandas', 'dateparser' ]
-install_packages = find_packages(include=['pulseapp', 'config', ])
+#install_packages = find_packages(include=['pulseapp', 'config', ])
+install_packages = find_packages(include=['pulseapp'])
 
 #DATA_FILES = []
 #PY2APP_OPTIONS = {

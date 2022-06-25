@@ -48,7 +48,7 @@ class PulseApp(rumps.App):
         'poll_qty_precision':       2,
         'poll_qty_threshold':       0.01,
         'init_string':              "Hello There",
-        'config_labels_file':       [ 'config', 'poll_items.txt' ],
+        'config_labels_file':       [ 'pulseapp.config', 'poll_items.txt' ],
         'data_delim':               ",",
         'path_dir_sysout_cloud':    os.environ.get('mld_out_cloud_shared'),
         'path_dir_output_plot':     os.environ.get('mld_plots_pulse'),
@@ -229,6 +229,5 @@ class PulseApp(rumps.App):
         log.debug("data_halflives=(%s)" % str(self.poll_items['halflives']))
         log.debug("data_onsets=(%s)" % str(self.poll_items['onsets']))
         #   }}}
-
 
 
