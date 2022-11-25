@@ -93,6 +93,8 @@ class PulseApp(rumps.App):
         self.menu.add(self.menu_item_plotall)
         self.menu.add(self.menu_item_quit)
 
+        self.error_str = ""
+
         #   Create path_dir_datacopy
         if not os.path.isdir(self.data['path_dir_datacopy']):
             log.warning("makedirs path_dir_datacopy=(%s)" % str(self.data['path_dir_datacopy']))
@@ -103,6 +105,7 @@ class PulseApp(rumps.App):
             self._ReadResource_DataLabels()
         except Exception as e:
             log.error("Failed ReadResource, e=(%s)" % str(e))
+            self.error_str = "!"
             exit(2)
 
         #   Initalize poll_qty
@@ -125,12 +128,14 @@ class PulseApp(rumps.App):
             PulseAppUtils.CopyLogDataFile_DivideByMonth(path_source, self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_overwrite=True, arg_includeMonthBefore=True, arg_gpg_key=self.data['gpgkey'], arg_remove_duplicate_lines=self.data['datacopy_remove_duplicates'])
         except Exception as e:
             log.error("CopyLogDataFile, e=(%s)" % str(e))
+            self.error_str = "!"
 
         #   Get list of files to read data from
         try:
             located_filepaths = PulseAppUtils.GetFiles_FromMonthlyRange(self.data['path_dir_datacopy'], self.data['datacopy_prefix'], self.data['datacopy_postfix'], now, now, arg_includeMonthBefore=True)
         except Exception as e:
             log.error("GetAvailableFiles, e=(%s)" % str(e))
+            self.error_str = "!"
 
 
         for loop_label, loop_halflife, loop_onset in zip(self.poll_items['labels'], self.poll_items['halflives'], self.poll_items['onsets']):
@@ -140,18 +145,21 @@ class PulseApp(rumps.App):
                 schedule_datetimes, schedule_qtys = PulseAppUtils.ReadTimestampedQtyScheduleData(located_filepaths, loop_label, self.data['data_cols'], self.data['data_delim'])
             except Exception as e:
                 log.error("ReadQtyScheduleData, e=(%s)" % str(e))
+                self.error_str = "!"
             #   Calculate current qty for loop_label
             loop_qty_today = None
             try:
                 loop_qty_today = DecayCalculator.TotalQtyForDay(now, schedule_datetimes, schedule_qtys)
             except Exception as e:
                 log.error("TotalQtyForDay, e=(%s)" % str(e))
+                self.error_str = "!"
             #   Calculate daily qty for loop_label
             loop_qty_now = None
             try:
                 loop_qty_now = DecayCalculator.CalculateQtyAtDT(now, schedule_datetimes, schedule_qtys, loop_halflife, loop_onset)
             except Exception as e:
                 log.error("CalculateQtyAtDT, e=(%s)" % str(e))
+                self.error_str = "!"
             #   Round result to poll_qty_precision, and down to zero if less than poll_qty_threshold
             loop_qty_now = round(loop_qty_now, self.data['poll_qty_precision'])
             if (loop_qty_now < self.data['poll_qty_threshold']):
@@ -193,6 +201,8 @@ class PulseApp(rumps.App):
                 poll_str_delta += str(int(loop_delta_now/60)) + " "
         poll_title_str = poll_str_delta.strip() + "⏳" + poll_str_qty.strip()
         log.debug("poll_title_str=(%s)" % str(poll_title_str))
+        if self.error_str:
+            return self.error_str
         return poll_title_str
 
     def _CreatePollTodaySumStr(self):
