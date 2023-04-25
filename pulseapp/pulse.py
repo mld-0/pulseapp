@@ -2,7 +2,7 @@
 #   VIM SETTINGS: {{{3
 #   vim: set tabstop=4 modeline modelines=10 foldmethod=marker:
 #   vim: set foldlevel=2 foldcolumn=1:
-#   }}}1
+#   {{{2
 import sys
 import os
 import logging
@@ -21,25 +21,39 @@ import dateutil
 import subprocess
 import pprint
 import pandas
-#   {{{2
+from subprocess import Popen, PIPE, STDOUT
+#   Notes:
+#   {{{
+#   2023-04-25T23:16:19AEST is two decimal places for qty really necessary?
+#   2023-04-25T23:27:57AEST cascading if-s for poll_elapsed -> should they be elif-s?
+#   }}}
 
+#   old imports:
+#   {{{
 #from timeplot.decaycalc import DecayCalc
 #from timeplot.timeplot import TimePlot
 #from timeplot.plotdecayqtys import PlotDecayQtys
 #from timeplot.util import TimePlotUtils
+#   }}}
+
+path_debug_log = os.path.join(tempfile.gettempdir(), "pulseapp.debug.%s.txt" % str(int(time.time())))
+f_debug_log = open(path_debug_log, 'wt')
+_logging_format="%(funcName)s: %(asctime)s %(levelname)s, %(message)s"
+_logging_datetime="%Y-%m-%dT%H:%M:%S%Z"
+
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
+log = logging.getLogger('pulse')
+log.setLevel(logging.DEBUG)
+
+handler_stderr = logging.StreamHandler(sys.stderr)
+handler_stderr.setFormatter(logging.Formatter(_logging_format, datefmt=_logging_datetime))
+log.addHandler(handler_stderr)       #   comment to disable stderr output
+
+logging.basicConfig(stream=f_debug_log, format=_logging_format, datefmt=_logging_datetime)
 
 from .decaycalculator import DecayCalculator
 from .utils import PulseAppUtils
-
-from subprocess import Popen, PIPE, STDOUT
-
-_logging_format="%(funcName)s: %(levelname)s, %(message)s"
-_logging_datetime="%Y-%m-%dT%H:%M:%S%Z"
-logging.basicConfig(stream=sys.stderr, format=_logging_format, datefmt=_logging_datetime)
-
-log = logging.getLogger('pulse')
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-log.setLevel(logging.DEBUG)
 
 class PulseApp(rumps.App):
 
@@ -75,9 +89,12 @@ class PulseApp(rumps.App):
         'previous': dict(),
         'deltanow': dict(),
     }
+    poll_elapsed = dict()
 
     def __init__(self):
         log.debug("__init__")
+        sys.stderr.write(f"path_debug_log=({path_debug_log})\n")
+
         super().__init__(self.data['init_string'], quit_button=None)
 
         #self.data['gpgkey'] = self.data['default_gpgkey']
@@ -164,15 +181,32 @@ class PulseApp(rumps.App):
             loop_qty_now = round(loop_qty_now, self.data['poll_qty_precision'])
             if (loop_qty_now < self.data['poll_qty_threshold']):
                 loop_qty_now = 0
+
             schedule_datetimes_last = max(schedule_datetimes)
             loop_deltanow = (now - schedule_datetimes_last).total_seconds()
             self.poll_qty['previous'][loop_label] = self.poll_qty['now'][loop_label]
             self.poll_qty['now'][loop_label] = loop_qty_now
             self.poll_qty['today'][loop_label] = loop_qty_today
             self.poll_qty['deltanow'][loop_label] = loop_deltanow
+
+            if loop_label == "D-IR":
+                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 1*60 and loop_deltanow >= 1*60:
+                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 1m")
+                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 5*60 and loop_deltanow >= 5*60:
+                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 5m")
+                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 45*60 and loop_deltanow >= 45*60:
+                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 45m")
+                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 55*60 and loop_deltanow >= 55*60:
+                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 55m")
+                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 65*60 and loop_deltanow >= 65*60:
+                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 65m")
+            self.poll_elapsed[loop_label] = loop_deltanow
+
             log.debug("loop_qty_today=(%s)" % str(loop_qty_today))
             log.debug("loop_qty_now=(%s)" % str(loop_qty_now))
             log.debug("loop_deltanow=(%s)" % str(loop_deltanow))
+
+        log.debug(f"poll_elapsed=({self.poll_elapsed})")
 
         poll_title_str = self._CreatePollTitleStr()
         poll_todaysum_str = self._CreatePollTodaySumStr()
@@ -234,6 +268,7 @@ class PulseApp(rumps.App):
                 self.poll_items['labels'].append(loop_line[0])
                 self.poll_items['halflives'].append(60 * int(loop_line[1]))
                 self.poll_items['onsets'].append(60 * int(loop_line[2]))
+                self.poll_elapsed[loop_line[0]] = 0
         file_poll_items.close()
         log.debug("data_labels=(%s)" % str(self.poll_items['labels']))
         log.debug("data_halflives=(%s)" % str(self.poll_items['halflives']))
