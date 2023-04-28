@@ -36,8 +36,9 @@ from subprocess import Popen, PIPE, STDOUT
 #from timeplot.util import TimePlotUtils
 #   }}}
 
-path_debug_log = os.path.join(tempfile.gettempdir(), "pulseapp.debug.%s.txt" % str(int(time.time())))
-f_debug_log = open(path_debug_log, 'wt')
+#path_debug_log = os.path.join(tempfile.gettempdir(), "pulseapp.debug.%s.txt" % str(int(time.time())))
+#f_debug_log = open(path_debug_log, 'wt')
+
 _logging_format="%(funcName)s: %(asctime)s %(levelname)s, %(message)s"
 _logging_datetime="%Y-%m-%dT%H:%M:%S%Z"
 
@@ -46,11 +47,12 @@ logging.getLogger('matplotlib').setLevel(logging.WARNING)
 log = logging.getLogger('pulse')
 log.setLevel(logging.DEBUG)
 
-handler_stderr = logging.StreamHandler(sys.stderr)
-handler_stderr.setFormatter(logging.Formatter(_logging_format, datefmt=_logging_datetime))
-log.addHandler(handler_stderr)       #   comment to disable stderr output
+#handler_stderr = logging.StreamHandler(sys.stderr)
+#handler_stderr.setFormatter(logging.Formatter(_logging_format, datefmt=_logging_datetime))
+#log.addHandler(handler_stderr)       #   comment to disable stderr output
+#logging.basicConfig(stream=f_debug_log, format=_logging_format, datefmt=_logging_datetime)
 
-logging.basicConfig(stream=f_debug_log, format=_logging_format, datefmt=_logging_datetime)
+logging.basicConfig(stream=sys.stderr, format=_logging_format, datefmt=_logging_datetime)
 
 from .decaycalculator import DecayCalculator
 from .utils import PulseAppUtils
@@ -93,7 +95,7 @@ class PulseApp(rumps.App):
 
     def __init__(self):
         log.debug("__init__")
-        sys.stderr.write(f"path_debug_log=({path_debug_log})\n")
+        #sys.stderr.write(f"path_debug_log=({path_debug_log})\n")
 
         super().__init__(self.data['init_string'], quit_button=None)
 
