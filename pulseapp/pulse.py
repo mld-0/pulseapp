@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #   VIM SETTINGS: {{{3
 #   vim: set tabstop=4 modeline modelines=10 foldmethod=marker:
-#   vim: set foldlevel=2 foldcolumn=1:
+#   vim: set foldlevel=2 foldcolumn=2:
 #   {{{2
 import sys
 import os
@@ -192,16 +192,20 @@ class PulseApp(rumps.App):
             self.poll_qty['deltanow'][loop_label] = loop_deltanow
 
             if loop_label == "D-IR":
-                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 1*60 and loop_deltanow >= 1*60:
-                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 1m")
-                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 5*60 and loop_deltanow >= 5*60:
-                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 5m")
+                #   rumps.notification(title, subtitle, message, data=None, sound=True)
                 if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 45*60 and loop_deltanow >= 45*60:
                     log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 45m")
+                    rumps.notification(f"{loop_label} 45m", "", "")
                 if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 55*60 and loop_deltanow >= 55*60:
                     log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 55m")
+                    rumps.notification(f"{loop_label} 55m", "", "")
                 if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 65*60 and loop_deltanow >= 65*60:
                     log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 65m")
+                    rumps.notification(f"{loop_label} 65m", "", "")
+                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 75*60 and loop_deltanow >= 75*60:
+                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 75m")
+                    rumps.notification(f"{loop_label} 75m", "", "")
+
             self.poll_elapsed[loop_label] = loop_deltanow
 
             log.debug("loop_qty_today=(%s)" % str(loop_qty_today))
