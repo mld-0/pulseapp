@@ -57,10 +57,13 @@ logging.basicConfig(stream=sys.stderr, format=_logging_format, datefmt=_logging_
 from .decaycalculator import DecayCalculator
 from .utils import PulseAppUtils
 
+elapsed_notifications = True
+elapsed_notifications_sound = True
+
 class PulseApp(rumps.App):
 
     data = { 
-        'delta_poll_qtys':          20,
+        'delta_poll_qtys':          30,
         'poll_qty_precision':       2,
         'poll_qty_threshold':       0.01,
         'init_string':              "Hello There",
@@ -148,6 +151,7 @@ class PulseApp(rumps.App):
         except Exception as e:
             log.error("CopyLogDataFile, e=(%s)" % str(e))
             self.error_str = "!"
+            rumps.notification(f"pulseapp error", "CopyLogDataFile_DivideByMonth", "e=({e})")
 
         #   Get list of files to read data from
         try:
@@ -155,68 +159,82 @@ class PulseApp(rumps.App):
         except Exception as e:
             log.error("GetAvailableFiles, e=(%s)" % str(e))
             self.error_str = "!"
+            rumps.notification(f"pulseapp error", "GetAvailableFiles", "e=({e})")
 
+        try:
+            for loop_label, loop_halflife, loop_onset in zip(self.poll_items['labels'], self.poll_items['halflives'], self.poll_items['onsets']):
+                log.debug("loop_label=(%s)" % str(loop_label))
+                #   Read data from copied file(s) for loop_label
+                try:
+                    schedule_datetimes, schedule_qtys = PulseAppUtils.ReadTimestampedQtyScheduleData(located_filepaths, loop_label, self.data['data_cols'], self.data['data_delim'])
+                except Exception as e:
+                    log.error("ReadQtyScheduleData, e=(%s)" % str(e))
+                    self.error_str = "!"
+                    rumps.notification(f"pulseapp error", "ReadQtyScheduleData", "e=({e})")
 
-        for loop_label, loop_halflife, loop_onset in zip(self.poll_items['labels'], self.poll_items['halflives'], self.poll_items['onsets']):
-            log.debug("loop_label=(%s)" % str(loop_label))
-            #   Read data from copied file(s) for loop_label
-            try:
-                schedule_datetimes, schedule_qtys = PulseAppUtils.ReadTimestampedQtyScheduleData(located_filepaths, loop_label, self.data['data_cols'], self.data['data_delim'])
-            except Exception as e:
-                log.error("ReadQtyScheduleData, e=(%s)" % str(e))
-                self.error_str = "!"
-            #   Calculate current qty for loop_label
-            loop_qty_today = None
-            try:
-                loop_qty_today = DecayCalculator.TotalQtyForDay(now, schedule_datetimes, schedule_qtys)
-            except Exception as e:
-                log.error("TotalQtyForDay, e=(%s)" % str(e))
-                self.error_str = "!"
-            #   Calculate daily qty for loop_label
-            loop_qty_now = None
-            try:
-                loop_qty_now = DecayCalculator.CalculateQtyAtDT(now, schedule_datetimes, schedule_qtys, loop_halflife, loop_onset)
-            except Exception as e:
-                log.error("CalculateQtyAtDT, e=(%s)" % str(e))
-                self.error_str = "!"
-            #   Round result to poll_qty_precision, and down to zero if less than poll_qty_threshold
-            loop_qty_now = round(loop_qty_now, self.data['poll_qty_precision'])
-            if (loop_qty_now < self.data['poll_qty_threshold']):
-                loop_qty_now = 0
+                #   Calculate current qty for loop_label
+                loop_qty_today = None
+                try:
+                    loop_qty_today = DecayCalculator.TotalQtyForDay(now, schedule_datetimes, schedule_qtys)
+                except Exception as e:
+                    log.error("TotalQtyForDay, e=(%s)" % str(e))
+                    self.error_str = "!"
+                    rumps.notification(f"pulseapp error", "TotalQtyForDay", "e=({e})")
+                #   Calculate daily qty for loop_label
+                loop_qty_now = None
+                try:
+                    loop_qty_now = DecayCalculator.CalculateQtyAtDT(now, schedule_datetimes, schedule_qtys, loop_halflife, loop_onset)
+                except Exception as e:
+                    log.error("CalculateQtyAtDT, e=(%s)" % str(e))
+                    self.error_str = "!"
+                    rumps.notification(f"pulseapp error", "CalculateQtyAtDT", "e=({e})")
+                #   Round result to poll_qty_precision, and down to zero if less than poll_qty_threshold
+                loop_qty_now = round(loop_qty_now, self.data['poll_qty_precision'])
+                if (loop_qty_now < self.data['poll_qty_threshold']):
+                    loop_qty_now = 0
 
-            schedule_datetimes_last = max(schedule_datetimes)
-            loop_deltanow = (now - schedule_datetimes_last).total_seconds()
-            self.poll_qty['previous'][loop_label] = self.poll_qty['now'][loop_label]
-            self.poll_qty['now'][loop_label] = loop_qty_now
-            self.poll_qty['today'][loop_label] = loop_qty_today
-            self.poll_qty['deltanow'][loop_label] = loop_deltanow
+                schedule_datetimes_last = max(schedule_datetimes)
+                loop_deltanow = (now - schedule_datetimes_last).total_seconds()
+                self.poll_qty['previous'][loop_label] = self.poll_qty['now'][loop_label]
+                self.poll_qty['now'][loop_label] = loop_qty_now
+                self.poll_qty['today'][loop_label] = loop_qty_today
+                self.poll_qty['deltanow'][loop_label] = loop_deltanow
 
-            if loop_label == "D-IR":
-                notifications_at = [ 40, 45, 50, 55, 60, 65, 70, 75, 80, ]
-                for loop_m in notifications_at:
-                    if self.poll_elapsed[loop_label] <= 1:
-                        continue
-                    if self.poll_elapsed[loop_label] >= loop_m * 60:
-                        continue
-                    log.info(f"show notification, label=({loop_label}) just passed loop_m=({loop_m})")
-                    #   rumps.notification(title, subtitle, message, data=None, sound=True)
-                    rumps.notification(f"{loop_label} {loop_m}m", sound=False)
+                if elapsed_notifications and loop_label == "D-IR":
+                    notifications_at = [ 45, 50, 55, 60, 65, 70, 75, 80, ]
+                    for loop_m in notifications_at:
+                        if self.poll_elapsed[loop_label] <= 1:
+                            continue
+                        if self.poll_elapsed[loop_label] >= loop_m * 60:
+                            continue
+                        if loop_deltanow < loop_m * 60:
+                            continue
+                        log.info(f"show notification, label=({loop_label}) just passed loop_m=({loop_m})")
+                        #   rumps.notification(title, subtitle, message, data=None, sound=True)
+                        rumps.notification(f"{loop_label} {loop_m}m", "", "", sound=elapsed_notifications_sound)
+                        log.info("notification DONE")
+                        break
 
-            self.poll_elapsed[loop_label] = loop_deltanow
+                self.poll_elapsed[loop_label] = loop_deltanow
 
-            log.debug("loop_qty_today=(%s)" % str(loop_qty_today))
-            log.debug("loop_qty_now=(%s)" % str(loop_qty_now))
-            log.debug("loop_deltanow=(%s)" % str(loop_deltanow))
+                log.debug("loop_qty_today=(%s)" % str(loop_qty_today))
+                log.debug("loop_qty_now=(%s)" % str(loop_qty_now))
+                log.debug("loop_deltanow=(%s)" % str(loop_deltanow))
 
-        log.debug(f"poll_elapsed=({self.poll_elapsed})")
+            log.debug(f"poll_elapsed=({self.poll_elapsed})")
 
-        poll_title_str = self._CreatePollTitleStr()
-        poll_todaysum_str = self._CreatePollTodaySumStr()
+            poll_title_str = self._CreatePollTitleStr()
+            poll_todaysum_str = self._CreatePollTodaySumStr()
 
-        sys.stderr.write("\n")
+            sys.stderr.write("\n")
 
-        self.title = poll_title_str
-        self.menu_item_qtytoday.title = poll_todaysum_str
+            self.title = poll_title_str
+            self.menu_item_qtytoday.title = poll_todaysum_str
+            log.debug("labels loop, DONE")
+        except Exception as e:
+            log.error("Labels loop, e=(%s)" % str(e))
+            self.error_str = "!"
+            rumps.notification(f"pulseapp error", "Labels loop", "e=({e})")
 
         #log.debug("Quit")
         #rumps.quit_application()
@@ -265,12 +283,18 @@ class PulseApp(rumps.App):
         file_poll_items = importlib.resources.open_text(*self.data['config_labels_file'])
         log.debug("file_poll_items=(%s)" % str(file_poll_items))
         for loop_line in file_poll_items:
-            loop_line = loop_line.strip().split("\t")
+            loop_line = loop_line.strip()
+            if loop_line[0] == '#':
+                log.debug(f"skip commented line=({loop_line})")
+                continue
+            loop_line = loop_line.split("\t")
             if (len(loop_line) > 1):
                 self.poll_items['labels'].append(loop_line[0])
                 self.poll_items['halflives'].append(60 * int(loop_line[1]))
                 self.poll_items['onsets'].append(60 * int(loop_line[2]))
                 self.poll_elapsed[loop_line[0]] = 0
+        if len(self.poll_items['labels']) == 0:
+            log.error("failed to read any poll_items from file_poll_items=({file_poll_items})")
         file_poll_items.close()
         log.debug("data_labels=(%s)" % str(self.poll_items['labels']))
         log.debug("data_halflives=(%s)" % str(self.poll_items['halflives']))
