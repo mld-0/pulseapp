@@ -57,8 +57,6 @@ logging.basicConfig(stream=sys.stderr, format=_logging_format, datefmt=_logging_
 from .decaycalculator import DecayCalculator
 from .utils import PulseAppUtils
 
-elapsed_notifications = True
-elapsed_notifications_sound = True
 
 class PulseApp(rumps.App):
 
@@ -100,17 +98,21 @@ class PulseApp(rumps.App):
         log.debug("__init__")
         #sys.stderr.write(f"path_debug_log=({path_debug_log})\n")
 
+        self.enable_elapsed_notify = True
+
         super().__init__(self.data['init_string'], quit_button=None)
 
         #self.data['gpgkey'] = self.data['default_gpgkey']
 
         #   Setup menu items
         self.menu_item_qtytoday = rumps.MenuItem("qty:")
+        self.menu_item_notifications = rumps.MenuItem("Notify On")
         self.menu_item_plottoday = rumps.MenuItem("Plot Today")
         self.menu_item_plotall = rumps.MenuItem("Plot All")
         self.menu_item_quit = rumps.MenuItem("Quit")
 
         self.menu.add(self.menu_item_qtytoday)
+        self.menu.add(self.menu_item_notifications)
         self.menu.add(self.menu_item_plottoday)
         self.menu.add(self.menu_item_plotall)
         self.menu.add(self.menu_item_quit)
@@ -200,7 +202,8 @@ class PulseApp(rumps.App):
                 self.poll_qty['today'][loop_label] = loop_qty_today
                 self.poll_qty['deltanow'][loop_label] = loop_deltanow
 
-                if elapsed_notifications and loop_label == "D-IR":
+                log.debug(f"enable_elapsed_notify=({self.enable_elapsed_notify})")
+                if self.enable_elapsed_notify and loop_label == "D-IR":
                     notifications_at = [ 45, 50, 55, 60, 65, 70, 75, 80, ]
                     for loop_m in notifications_at:
                         if self.poll_elapsed[loop_label] <= 1:
@@ -211,7 +214,7 @@ class PulseApp(rumps.App):
                             continue
                         log.info(f"show notification, label=({loop_label}) just passed loop_m=({loop_m})")
                         #   rumps.notification(title, subtitle, message, data=None, sound=True)
-                        rumps.notification(f"{loop_label} {loop_m}m", "", "", sound=elapsed_notifications_sound)
+                        rumps.notification(f"{loop_label} {loop_m}m", "", "")
                         log.info("notification DONE")
                         break
 
@@ -269,17 +272,29 @@ class PulseApp(rumps.App):
         log.debug("poll_todaysum_str=(%s)" % str(poll_todaysum_str))
         return poll_todaysum_str
 
+
+    @rumps.clicked('Notify On')
+    def handle_toggle_notifications(self, _):
+        """"""
+        log.debug("toggle notifications called")
+        new_label_str = ""
+        if self.enable_elapsed_notify:
+            new_label_str = "Notify Off"
+            self.enable_elapsed_notify = False
+        else:
+            new_label_str = "Notify On"
+            self.enable_elapsed_notify = True
+        log.debug(f"new_label_str=({new_label_str})")
+        self.menu_item_notifications.title = new_label_str
+
     @rumps.clicked('Quit')
     def handle_quit(self, _):
         """Handle Quit"""
-        #   {{{
         log.debug("Quit called")
         rumps.quit_application()
-        #   }}}
 
     def _ReadResource_DataLabels(self):
         """Read resource file config_labels_file to 'self.poll_items as tab-delimited values"""
-        #   {{{
         file_poll_items = importlib.resources.open_text(*self.data['config_labels_file'])
         log.debug("file_poll_items=(%s)" % str(file_poll_items))
         for loop_line in file_poll_items:
@@ -299,6 +314,4 @@ class PulseApp(rumps.App):
         log.debug("data_labels=(%s)" % str(self.poll_items['labels']))
         log.debug("data_halflives=(%s)" % str(self.poll_items['halflives']))
         log.debug("data_onsets=(%s)" % str(self.poll_items['onsets']))
-        #   }}}
-
 
