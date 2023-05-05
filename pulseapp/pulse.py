@@ -192,14 +192,14 @@ class PulseApp(rumps.App):
             self.poll_qty['deltanow'][loop_label] = loop_deltanow
 
             if loop_label == "D-IR":
-                #   rumps.notification(title, subtitle, message, data=None, sound=True)
-                notifications_at = [ 45, 50, 55, 60, 65, 70, 75, 80, ]
+                notifications_at = [ 40, 45, 50, 55, 60, 65, 70, 75, 80, ]
                 for loop_m in notifications_at:
                     if self.poll_elapsed[loop_label] <= 1:
                         continue
                     if self.poll_elapsed[loop_label] >= loop_m * 60:
                         continue
                     log.info(f"show notification, label=({loop_label}) just passed loop_m=({loop_m})")
+                    #   rumps.notification(title, subtitle, message, data=None, sound=True)
                     rumps.notification(f"{loop_label} {loop_m}m", sound=False)
 
             self.poll_elapsed[loop_label] = loop_deltanow
