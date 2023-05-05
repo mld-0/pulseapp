@@ -193,18 +193,14 @@ class PulseApp(rumps.App):
 
             if loop_label == "D-IR":
                 #   rumps.notification(title, subtitle, message, data=None, sound=True)
-                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 45*60 and loop_deltanow >= 45*60:
-                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 45m")
-                    rumps.notification(f"{loop_label} 45m", "", "")
-                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 55*60 and loop_deltanow >= 55*60:
-                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 55m")
-                    rumps.notification(f"{loop_label} 55m", "", "")
-                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 65*60 and loop_deltanow >= 65*60:
-                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 65m")
-                    rumps.notification(f"{loop_label} 65m", "", "")
-                if self.poll_elapsed[loop_label] > 0 and self.poll_elapsed[loop_label] < 75*60 and loop_deltanow >= 75*60:
-                    log.info(f"[SHOW NOTIFICATION] {loop_label} JUST PASSED 75m")
-                    rumps.notification(f"{loop_label} 75m", "", "")
+                notifications_at = [ 45, 50, 55, 60, 65, 70, 75, 80, ]
+                for loop_m in notifications_at:
+                    if self.poll_elapsed[loop_label] <= 1:
+                        continue
+                    if self.poll_elapsed[loop_label] >= loop_m * 60:
+                        continue
+                    log.info(f"show notification, label=({loop_label}) just passed loop_m=({loop_m})")
+                    rumps.notification(f"{loop_label} {loop_m}m", sound=False)
 
             self.poll_elapsed[loop_label] = loop_deltanow
 
