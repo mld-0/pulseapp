@@ -62,7 +62,7 @@ class PulseApp(rumps.App):
 
     data = { 
         'delta_poll_qtys':          30,
-        'poll_qty_precision':       2,
+        'poll_qty_precision':       1,
         'poll_qty_threshold':       0.01,
         'init_string':              "Hello There",
         'config_labels_file':       [ 'pulseapp.config', 'poll_items.txt' ],
@@ -257,6 +257,10 @@ class PulseApp(rumps.App):
                     poll_str_qty += " "
                 poll_str_delta += str(int(loop_delta_now/60)) + " "
         poll_title_str = poll_str_delta.strip() + "⏳" + poll_str_qty.strip()
+        if self.enable_elapsed_notify:
+            poll_title_str = "🔔 " + poll_title_str 
+        else:
+            poll_title_str = "🔕 " + poll_title_str
         log.debug("poll_title_str=(%s)" % str(poll_title_str))
         if self.error_str:
             return self.error_str
@@ -286,6 +290,8 @@ class PulseApp(rumps.App):
             self.enable_elapsed_notify = True
         log.debug(f"new_label_str=({new_label_str})")
         self.menu_item_notifications.title = new_label_str
+        poll_title_str = self._CreatePollTitleStr()
+        self.title = poll_title_str
 
     @rumps.clicked('Quit')
     def handle_quit(self, _):
