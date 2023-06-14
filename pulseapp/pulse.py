@@ -153,7 +153,7 @@ class PulseApp(rumps.App):
         except Exception as e:
             log.error("CopyLogDataFile, e=(%s)" % str(e))
             self.error_str = "!"
-            rumps.notification(f"pulseapp error", "CopyLogDataFile_DivideByMonth", "e=({e})")
+            rumps.notification("pulseapp error", "CopyLogDataFile_DivideByMonth", f"e=({e})")
 
         #   Get list of files to read data from
         try:
@@ -161,7 +161,7 @@ class PulseApp(rumps.App):
         except Exception as e:
             log.error("GetAvailableFiles, e=(%s)" % str(e))
             self.error_str = "!"
-            rumps.notification(f"pulseapp error", "GetAvailableFiles", "e=({e})")
+            rumps.notification("pulseapp error", "GetAvailableFiles", f"e=({e})")
 
         try:
             for loop_label, loop_halflife, loop_onset in zip(self.poll_items['labels'], self.poll_items['halflives'], self.poll_items['onsets']):
@@ -172,7 +172,7 @@ class PulseApp(rumps.App):
                 except Exception as e:
                     log.error("ReadQtyScheduleData, e=(%s)" % str(e))
                     self.error_str = "!"
-                    rumps.notification(f"pulseapp error", "ReadQtyScheduleData", "e=({e})")
+                    rumps.notification("pulseapp error", "ReadQtyScheduleData", f"e=({e})")
 
                 #   Calculate current qty for loop_label
                 loop_qty_today = None
@@ -181,7 +181,7 @@ class PulseApp(rumps.App):
                 except Exception as e:
                     log.error("TotalQtyForDay, e=(%s)" % str(e))
                     self.error_str = "!"
-                    rumps.notification(f"pulseapp error", "TotalQtyForDay", "e=({e})")
+                    rumps.notification("pulseapp error", "TotalQtyForDay", f"e=({e})")
                 #   Calculate daily qty for loop_label
                 loop_qty_now = None
                 try:
@@ -189,7 +189,7 @@ class PulseApp(rumps.App):
                 except Exception as e:
                     log.error("CalculateQtyAtDT, e=(%s)" % str(e))
                     self.error_str = "!"
-                    rumps.notification(f"pulseapp error", "CalculateQtyAtDT", "e=({e})")
+                    rumps.notification("pulseapp error", "CalculateQtyAtDT", f"e=({e})")
                 #   Round result to poll_qty_precision, and down to zero if less than poll_qty_threshold
                 loop_qty_now = round(loop_qty_now, self.data['poll_qty_precision'])
                 if (loop_qty_now < self.data['poll_qty_threshold']):
@@ -237,7 +237,7 @@ class PulseApp(rumps.App):
         except Exception as e:
             log.error("Labels loop, e=(%s)" % str(e))
             self.error_str = "!"
-            rumps.notification(f"pulseapp error", "Labels loop", "e=({e})")
+            rumps.notification("pulseapp error", "Labels loop", f"e=({e})")
 
         #log.debug("Quit")
         #rumps.quit_application()
